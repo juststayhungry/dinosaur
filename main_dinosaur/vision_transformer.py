@@ -214,12 +214,10 @@ class VisionTransformer(nn.Module):
         for blk in self.blocks:
             x = blk(x)#将tokens输入多层Tr
         x = self.norm(x)#LN后输出
-        return x[:,1:] #除去cls token作为全部tokens的表征#b 196 768
+        x = x[:,1:] #除去cls token作为全部tokens的表征#b 196 768
     
-        # hw = int(x.size(1)**0.5)#得到map的h与w的大小，为后续恢复feature map
-        # x = x.transpose(2, 1)
-        # x = x.view(x.size(0),x.size(1),hw,hw)#bd h*w  ---bdhw
-        # return x 
+
+        return x 
     def get_last_selfattention(self, x):
         x = self.prepare_tokens(x)
         for i, blk in enumerate(self.blocks):
