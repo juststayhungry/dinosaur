@@ -2,7 +2,7 @@ import argparse
 import logging
 import os
 import pprint
-
+import ipdb
 import torch
 from torch import nn
 import torch.backends.cudnn as cudnn
@@ -19,16 +19,21 @@ from util.classes import CLASSES
 from util.ohem import ProbOhemCrossEntropy2d
 from util.utils import count_params, init_log, AverageMeter
 from util.dist_helper import setup_distributed
-
-def str2bool(v):
-    if isinstance(v, bool):
-        return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
-        return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-        return False
-    else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
+'''
+定义selected_label为[u_num,h*w]用于存储像素级别达到阈值的类别，初始化为全-1
+通过统计每个batch中样本结果代码如下，其中mask_u_w_f为BHW的达到阈值的类别矩阵(即预测达到阈值的像素显示类别id，未达到阈值位置显示-1)；
+            for i,j in enumerate(x_ulb_idx):#每图片单独统计
+                selected_label[j] = (mask_u_w_f[i]).flatten()
+'''
+# def str2bool(v):
+#     if isinstance(v, bool):
+#         return v
+#     if v.lower() in ('yes', 'true', 't', 'y', '1'):
+#         return True
+#     elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+#         return False
+#     else:
+#         raise argparse.ArgumentTypeError('Boolean value expected.')
 parser = argparse.ArgumentParser(description='Revisiting Weak-to-Strong Consistency in Semi-Supervised Semantic Segmentation')
 parser.add_argument('--config', type=str, required=True)
 parser.add_argument('--labeled-id-path', type=str, required=True)
@@ -104,7 +109,7 @@ def main():
     total_iters = len(trainloader_u) * cfg['epochs']
     previous_best = 0.0
     epoch = -1
-    total_u_num = len(trainloader_u)*cfg['batch_size']
+    total_u_num = len(trainset_u)
     total_u_pixel_num =total_u_num*img_u_w_h*img_u_w_w
 
     if os.path.exists(os.path.join(args.save_path, 'latest.pth')):
@@ -134,6 +139,7 @@ def main():
         
         loader = zip(trainloader_l, trainloader_u, trainloader_u)
         selected_label = torch.ones((total_u_num,img_u_w_h*img_u_w_w), dtype=torch.long, ) * -1
+        
         selected_label = selected_label.cuda()
         class_acc = torch.zeros((cfg['nclass'],)).cuda()
         '''
@@ -245,6 +251,7 @@ def main():
             mask_u_w_f = mask_u_w_f -1#恢复原始类别
             # print("阈值处理后的类别矩阵",mask_u_w_f)
             for i,j in enumerate(x_ulb_idx):#每图片单独统计
+                # ipdb.set_trace()
                 selected_label[j] = (mask_u_w_f[i]).flatten()
  
             torch.distributed.barrier()
