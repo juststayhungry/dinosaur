@@ -240,13 +240,13 @@ def main():
             已知select == 1矩阵为初始阈值ge得到的bool矩阵 BHW
             mask_u_w矩阵是类别id矩阵
             '''
-            mask_u_w = mask_u_w +1
+            mask_u_w = mask_u_w +1#防止类别0作用
             mask_u_w_f = (mask_u_w*select)
-            mask_u_w_f = mask_u_w_f -1
+            mask_u_w_f = mask_u_w_f -1#恢复原始类别
             # print("阈值处理后的类别矩阵",mask_u_w_f)
             for i,j in enumerate(x_ulb_idx):#每图片单独统计
-                selected_label[j] = mask_u_w_f[i].flatten()
-
+                selected_label[j] = (mask_u_w_f[i]).flatten()
+ 
             torch.distributed.barrier()
 
             optimizer.zero_grad()
