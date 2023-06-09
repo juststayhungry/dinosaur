@@ -49,7 +49,7 @@ class SlotAttention(nn.Module):
         
         mu = self.slots_mu.expand(b, n_s, -1)
         sigma = self.slots_sigma.expand(b, n_s, -1)
-        slots = torch.normal(mu, sigma)
+        slots = torch.normal(mu, sigma)#slots的参数赋值
 
         inputs = self.norm_input(inputs)        
         k, v = self.to_k(inputs), self.to_v(inputs)
@@ -60,8 +60,8 @@ class SlotAttention(nn.Module):
             slots = self.norm_slots(slots)
             q = self.to_q(slots)
 
-            dots = torch.einsum('bid,bjd->bij', q, k) * self.scale
-            attn = dots.softmax(dim=1) + self.eps
+            dots = torch.einsum('bid,bjd->bij', q, k) * self.scale#dots是归一化前的数值
+            attn = dots.softmax(dim=1) + self.eps#在i维度，即slot维度做归一化
             attn = attn / attn.sum(dim=-1, keepdim=True)
 
             updates = torch.einsum('bjd,bij->bid', v, attn)
@@ -72,7 +72,7 @@ class SlotAttention(nn.Module):
             )
 
             slots = slots.reshape(b, -1, d)
-            slots = slots + self.fc2(F.relu(self.fc1(self.norm_pre_ff(slots))))
+            slots = slots + self.fc2(F.relu(self.fc1(self.norm_pre_ff(slots))))#残差连接
 
         return slots
     
