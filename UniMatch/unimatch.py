@@ -221,12 +221,17 @@ def main():
             p_cutoff = 0.95#初始阈值
             select = conf_u_w.ge(p_cutoff).long()
             if max(pred_u_w_counter.values()) < (total_u_pixel_num+1):  #
-                for i in range(cfg['nclass']):
-                    class_acc[i] = pred_u_w_counter[i] / max((total_u_pixel_num - sum(pred_u_w_counter.values())),max(pred_u_w_counter.values()))
+                wo_negative_one = deepcopy(pred_u_w_counter)
+                if -1 in wo_negative_one.keys():
+                    wo_negative_one.pop(-1)
+                wo_negative_one.update({-1: 1})
+                
+                for i in range(cfg['nclass']):                    
+                    class_acc[i] = pred_u_w_counter[i] / max(wo_negative_one.values())
+                    # class_acc[i] = pred_u_w_counter[i] / max((total_u_pixel_num - sum(pred_u_w_counter.values())),max(pred_u_w_counter.values()))
 
-            T = p_cutoff * (class_acc[mask_u_w.flatten()] / (2. - class_acc[mask_u_w.flatten()])) \
-            .reshape(cfg['batch_size'],img_u_w_h,img_u_w_w)
-            mask = conf_u_w.ge(T)  # convex
+            T = p_cutoff * (class_acc[mask_u_w.flatten(1)] / (2. - class_acc[mask_u_w.flatten(1)])).reshape(-1,img_u_w_h,img_u_w_w) # convex
+            mask = conf_u_w.ge(T) 
 
             loss_u_s1 = criterion_u(pred_u_s1, mask_u_w_cutmixed1)
             loss_u_s1 = loss_u_s1*(mask& (ignore_mask_cutmixed1 != 255))
