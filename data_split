@@ -18,8 +18,10 @@ def extract_adjectives(sentence):
     
     return adjectives
 
-def sen_parse(caption): #句子解析；输入caption；输出三类单词
-  
+def sen_parse(caption): 
+    #句子解析并输出三类单词；
+    输入caption；
+    输出三类单词的set
   attributes = set()
   relations = set()
   objects = set()
@@ -34,9 +36,9 @@ def sen_parse(caption): #句子解析；输入caption；输出三类单词
   attributes.update(attribute)#属性
   return objects,attributes,relations
 
-captions_path = r"/content/annotations/captions_train2017.json"
+captions_train_path = r"/content/annotations/captions_train2017.json"
 # 读取json文件
-with open(captions_path, 'r') as f1:
+with open(captions_train_path, 'r') as f1:
     dictortary = json.load(f1)
 
 # 得到images和annotations信息
@@ -48,14 +50,13 @@ relations_train = set()
 objects_train = set()
 
 for i in tqdm(range(len(annotations_value))):
-  # 示例用法
   caption = annotations_value[i].get("caption")
   objects_train.update(sen_parse(caption=caption)[0])
   attributes_train.update(sen_parse(caption=caption)[1])
   relations_train.update(sen_parse(caption=caption)[2])
 
 
-#对test中图像进行类别分类
+#对test中图像进行读取与分类
 captions_test_path = r"/content/annotations/captions_val2017.json"
 # 读取json文件
 with open(captions_test_path, 'r') as f2:
@@ -72,7 +73,7 @@ for i in images_test_value:
     list.append(i.get("id"))
     id2name[i.get("id")] = i.get("file_name")
 
-id_caption = {}
+id_caption = {}#每个测试图像仅保留一个caption
 for i in list:
     for j in annotations_test_value:
         if j.get("image_id") == i:
