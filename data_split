@@ -1,0 +1,99 @@
+import os
+import json
+import sng_parser
+import spacy
+from tqdm import *
+
+# 加载英文语言模型
+nlp = spacy.load('en_core_web_sm')
+def extract_adjectives(sentence):
+    # 对句子进行分析
+    doc = nlp(sentence)
+    
+    # 提取形容词
+    adjectives = []
+    for token in doc:
+        if token.pos_ == 'ADJ':  # 判断词性是否为形容词
+            adjectives.append(token.text)
+    
+    return adjectives
+
+def sen_parse(caption): #句子解析；输入caption；输出三类单词
+  
+  attributes = set()
+  relations = set()
+  objects = set()
+  graph = sng_parser.parse(caption)
+  for i in range(len(graph.get("entities"))):
+    objects.update({graph.get("entities")[i].get("head")})#对象
+
+  for i in range(len(graph.get('relations'))):
+    relations.update({graph.get('relations')[i].get("relation")})#关系
+    
+  attribute = extract_adjectives(caption)
+  attributes.update(attribute)#属性
+  return objects,attributes,relations
+
+captions_path = r"/content/annotations/captions_train2017.json"
+# 读取json文件
+with open(captions_path, 'r') as f1:
+    dictortary = json.load(f1)
+
+# 得到images和annotations信息
+images_value = dictortary.get("images")
+annotations_value = dictortary.get("annotations")
+#对训练caption进行解析
+attributes_train = set()
+relations_train = set()
+objects_train = set()
+
+for i in tqdm(range(len(annotations_value))):
+  # 示例用法
+  caption = annotations_value[i].get("caption")
+  objects_train.update(sen_parse(caption=caption)[0])
+  attributes_train.update(sen_parse(caption=caption)[1])
+  relations_train.update(sen_parse(caption=caption)[2])
+
+
+#对test中图像进行类别分类
+captions_test_path = r"/content/annotations/captions_val2017.json"
+# 读取json文件
+with open(captions_test_path, 'r') as f2:
+    dictortary_test = json.load(f2)
+
+# 得到images和annotations信息
+images_test_value = dictortary_test.get("images")
+annotations_test_value = dictortary_test.get("annotations")
+
+
+list=[]
+id2name = dict()
+for i in images_test_value:
+    list.append(i.get("id"))
+    id2name[i.get("id")] = i.get("file_name")
+
+id_caption = {}
+for i in list:
+    for j in annotations_test_value:
+        if j.get("image_id") == i:
+            imgname = id2name.get(i).split(".")[0]
+            id_caption.update({imgname:j.get("caption")})
+            
+unseen_comp_id = []
+unseen_atoms_id= []
+
+#遍历test中的id_caption，并对其进行分类
+for key in id_caption.keys():
+  attributes_test = set()
+  relations_test = set()  
+  objects_test = set()
+  caption_test = id_caption[key]
+  objects_test.update(sen_parse(caption=caption_test)[0])
+  attributes_test.update(sen_parse(caption=caption_test)[1])
+  relations_test.update(sen_parse(caption=caption_test)[2])
+
+  if attributes_test.issubset(attributes_train) and relations_test.issubset(relations_train)\
+  and (objects_test.issubset(objects_train)):
+    unseen_comp_id.append(key)
+  else:
+    unseen_atoms_id.append(key)#前提test中没有train中图片的不同view,#COCO数据集本身train与test的图像有无交集??
