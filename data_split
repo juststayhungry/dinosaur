@@ -20,8 +20,8 @@ def extract_adjectives(sentence):
 
 def sen_parse(caption): 
     #句子解析并输出三类单词；
-    输入caption；
-    输出三类单词的set
+    #输入caption；
+    #输出三类单词的set
   attributes = set()
   relations = set()
   objects = set()
@@ -82,7 +82,7 @@ for i in list:
             
 unseen_comp_id = []
 unseen_atoms_id= []
-
+caption_test = []
 #遍历test中的id_caption，并对其进行分类
 for key in id_caption.keys():
   attributes_test = set()
@@ -98,3 +98,4 @@ for key in id_caption.keys():
     unseen_comp_id.append(key)
   else:
     unseen_atoms_id.append(key)#前提test中没有train中图片的不同view,#COCO数据集本身train与test的图像有无交集??
+#split后数据的保存，保存至txt文件
