@@ -1,3 +1,4 @@
+import random
 import os
 import json
 import sng_parser
@@ -15,7 +16,6 @@ def extract_adjectives(sentence):
     for token in doc:
         if token.pos_ == 'ADJ':  # 判断词性是否为形容词
             adjectives.append(token.text)
-    
     return adjectives
 
 def sen_parse(caption): 
@@ -36,6 +36,13 @@ def sen_parse(caption):
   attributes.update(attribute)#属性
   return objects,attributes,relations
 
+def split_dataset(dataset, split_ratio):
+    random.shuffle(dataset)  # 随机打乱数据集顺序
+    split_index = int(len(dataset) * split_ratio)
+    train_data = dataset[:split_index]
+    test_data = dataset[split_index:]
+    return train_data, test_data
+
 captions_train_path = r"/content/annotations/captions_train2017.json"
 # 读取json文件
 with open(captions_train_path, 'r') as f1:
@@ -49,42 +56,32 @@ attributes_train = set()
 relations_train = set()
 objects_train = set()
 
-for i in tqdm(range(len(annotations_value))):
-  caption = annotations_value[i].get("caption")
+id_caption = dict()
+
+#每个测试图像仅保留一个caption
+for caption in tqdm(annotations_value):
+    image_id = caption['image_id']
+    caption_text = caption['caption']
+
+    # 如果该图片id还未在字典中出现过，则添加到字典中
+    if image_id not in id_caption:
+        id_caption[image_id] = caption_text
+
+#split后数据的保存，保存至txt文件
+split_ratio = 0.8 #seen的图像占比
+train_id,test_id = split_dataset(list(id_caption.keys()),split_ratio)
+#对seen_caption进行解析并统计三类视觉概念
+for key in tqdm(train_id):
+  caption = id_caption[key]
   objects_train.update(sen_parse(caption=caption)[0])
   attributes_train.update(sen_parse(caption=caption)[1])
   relations_train.update(sen_parse(caption=caption)[2])
-
-
-#对test中图像进行读取与分类
-captions_test_path = r"/content/annotations/captions_val2017.json"
-# 读取json文件
-with open(captions_test_path, 'r') as f2:
-    dictortary_test = json.load(f2)
-
-# 得到images和annotations信息
-images_test_value = dictortary_test.get("images")
-annotations_test_value = dictortary_test.get("annotations")
-
-
-list=[]
-id2name = dict()
-for i in images_test_value:
-    list.append(i.get("id"))
-    id2name[i.get("id")] = i.get("file_name")
-
-id_caption = {}#每个测试图像仅保留一个caption
-for i in list:
-    for j in annotations_test_value:
-        if j.get("image_id") == i:
-            imgname = id2name.get(i).split(".")[0]
-            id_caption.update({imgname:j.get("caption")})
             
 unseen_comp_id = []
 unseen_atoms_id= []
 caption_test = []
 #遍历test中的id_caption，并对其进行分类
-for key in id_caption.keys():
+for key in tqdm(test_id):
   attributes_test = set()
   relations_test = set()  
   objects_test = set()
@@ -98,4 +95,32 @@ for key in id_caption.keys():
     unseen_comp_id.append(key)
   else:
     unseen_atoms_id.append(key)#前提test中没有train中图片的不同view,#COCO数据集本身train与test的图像有无交集??
-#split后数据的保存，保存至txt文件
+
+
+
+#split后三类数据的保存，保存至txt文件
+unseen_atoms_id_path = r"/content/unseen_atoms"
+unseen_comp_id_path = r"/content/unseen_comp"
+seen_id_path = r"/content/seen"
+text = 'image_id'+ '\t'+'caption'+ '\n'
+
+for id in unseen_comp_id:
+    text += str(id) + '\t' + id_caption[id] + '\n'
+with open(unseen_comp_id_path, 'w') as f:
+    f.write(text)
+
+
+text = 'image_id'+ '\t'+'caption'+ '\n'
+for id in unseen_atoms_id:
+    text += str(id) + '\t' + id_caption[id] + '\n'
+with open(unseen_atoms_id_path, 'w') as f:
+    f.write(text)
+
+
+text = 'image_id'+ '\t'+'caption'+ '\n'
+for id in train_id:
+    text += str(id) + '\t' + id_caption[id] + '\n'
+with open(seen_id_path, 'w') as f:
+    f.write(text)
+
+
